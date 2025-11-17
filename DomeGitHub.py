@@ -71,6 +71,7 @@ class MLP(nn.Module):
         self.out_projection = nn.Linear(channels, channels_data)
 
     def gen_t_embedding(self, t, max_positions=10000):
+        # https://apxml.com/courses/advanced-diffusion-architectures/chapter-2-advanced-unet-architectures/unet-time-embeddings
         t = t * max_positions
         half_dim = self.channels_t // 2
         emb = math.log(max_positions) / (half_dim - 1)
@@ -92,6 +93,8 @@ class MLP(nn.Module):
 
 
 
+
+
 model = MLP(layers=5, channels=512)
 optim = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
@@ -105,6 +108,7 @@ losses = []
 for i in pbar:
     x1 = data[torch.randint(data.size(0), (batch_size,))]
     x0 = torch.randn_like(x1)
+
     target = x1 - x0
     t = torch.rand(x1.size(0))
     xt = (1 - t[:, None]) * x0 + t[:, None] * x1

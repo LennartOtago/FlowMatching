@@ -156,55 +156,98 @@ model = nn.Sequential(
 #     nn.Linear(in_features=channel_features, out_features=dim_features )
 # )
 
+import ot
+def resample_optimal_plan(source: torch.tensor, target: torch.tensor) -> torch.tensor:
+    """
+    https://github.com/ulrikisdahl/Conditional-Flow-Matching/blob/main/train.py
+    Mini-batch sampling of optimal transport plan between two distributions
+    Uses euclidian distance measure for cost and Earth Movers Distance for optimal plan
+    """
+    #Assume equal mass
+    source_weights = torch.ones(source.shape[0]) / source.shape[0]
+    target_weights = torch.ones(target.shape[0]) / target.shape[0]
 
-optim = torch.optim.AdamW( model.parameters(), lr=1e-4)
-batch_size = 64
-k = 0
-loss = torch.tensor(2)
-prevloss = torch.tensor(2.5)
-#while  abs(prevloss-loss) > 1e-6:
-while k < 1e5:
-    k += 1
-    prevloss = loss.detach().clone()
+    dist = torch.cdist(source.view(source.shape[0], -1), target.view(source.shape[0], -1))**2
+    plan = ot.emd(source_weights, target_weights, dist)
+    pairs = torch.argwhere(plan > 0)
 
-    # draw samples from target
-    x1 = data[torch.randint(data.size(0), (batch_size,))]
+    #reorder (along the batch dimension only) the target distribution according to corresponding source pairing
+    target = target[pairs[:, 1]]
+    return source, target
 
-    # draw time t
-    t = torch.rand(x1.size(0))
+learnModel = False
+if learnModel:
 
-    # draw samples from noise
-    NoiseSampl = np.random.multivariate_normal(np.zeros(2), np.eye(2), size=batch_size)
-    x0 = torch.from_numpy(NoiseSampl).to(dtype=torch.float32)
+    optim = torch.optim.AdamW( model.parameters(), lr=1e-4)
+    batch_size = 64
+    k = 0
+    loss = torch.tensor(2)
+    prevloss = torch.tensor(2.5)
+    #while  abs(prevloss-loss) > 1e-6:
+    while k < 1e5:
+        k += 1
+        prevloss = loss.detach().clone()
 
-    # xt
-    sample_input = (1 - t[:, None]) * x0 + t[:, None] * x1
-    pred = model(torch.cat([sample_input, torch.unsqueeze(t, 1)], dim=1) )
-    target = x1 - x0
-    #target = x1
+        # draw samples from target
+        x1 = data[torch.randint(data.size(0), (batch_size,))]
 
-    loss = ((target - pred)**2).mean()
-    loss.backward()
-    optim.step()
-    optim.zero_grad()
-    #print(loss)
+        # draw time t
+        t = torch.rand(x1.size(0))
 
-# learn parameters
-print(f'rounds {k}')
-print(loss)
+        # draw samples from noise
+        NoiseSampl = np.random.multivariate_normal(np.zeros(2), np.eye(2), size=batch_size)
+        x0 = torch.from_numpy(NoiseSampl).to(dtype=torch.float32)
+        x0, x1 = resample_optimal_plan(x0, x1)
+        # xt
+        sample_input = (1 - t[:, None]) * x0 + t[:, None] * x1
+        pred = model(torch.cat([sample_input, torch.unsqueeze(t, 1)], dim=1) )
+        target = x1 - x0
+        #target = x1
+
+        loss = ((target - pred)**2).mean()
+        loss.backward()
+        optim.step()
+        optim.zero_grad()
+        #print(loss)
+
+    # learn parameters
+    print(f'rounds {k}')
+    print(loss)
+    # Save the model's state_dict
+    PATH = "SimpleModel.pth"  # Recommended file extension is .pt or .pth
+    torch.save(model.state_dict(), PATH)
+else:
+    # Load the saved state_dict
+    PATH = "SimpleModel.pth"
+    model.load_state_dict(torch.load(PATH))
+    model.eval()
+
+
+
 ##
 test_size = 500
-x0 = torch.from_numpy(NoiseSampl).to(dtype=torch.float32)
+plot_every = 100
+plotBetween = True
+x1 = data[torch.randint(data.size(0), (test_size,))]
+
+#x0 = torch.from_numpy(NoiseSampl).to(dtype=torch.float32)
 xt = torch.randn(test_size, 2)
+#x0, xt = resample_optimal_plan(x0, xt)
 steps = 500
-for t in torch.linspace(0, 1, steps):
+for i, t in enumerate(torch.linspace(0, 1, steps), start=1):
+#for t in torch.linspace(0, 1, steps):
     pred = model(torch.cat([xt, torch.unsqueeze(torch.ones(xt.size(0)) * t , 1)], dim=1))
     #pred = model(xt)
     xt = xt + (1 / steps) * pred
+    if i % plot_every == 0 and plotBetween:
+        plt.figure(figsize=(6, 6))
+        plt.scatter(x1[:, 0].detach().numpy(), x1[:, 1].detach().numpy(), color="red", marker="o")
+        plt.scatter(xt[:, 0].detach().numpy(), xt[:, 1].detach().numpy(), color="green", marker="o")
+        plt.show(block = True)
 
 # pred = model(xt)
 # xt = xt +  pred
-x1 = data[torch.randint(data.size(0), (test_size,))]
+
 # Plot the checkerboard pattern
 plt.figure(figsize=(6, 6))
 #plt.imshow(checkerboard, extent=(x_min, x_max, y_min, y_max), origin="lower", cmap=ListedColormap(["purple", "yellow"]))
