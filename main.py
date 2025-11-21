@@ -193,6 +193,7 @@ if learnModel:
 
         # draw time t
         t = torch.rand(x1.size(0))
+        # t = torch.ones(x1.size(0))
 
         # draw samples from noise
         NoiseSampl = np.random.multivariate_normal(np.zeros(2), np.eye(2), size=batch_size)
@@ -226,7 +227,7 @@ else:
 
 ##
 test_size = 500
-plot_every = 100
+plot_every = 250
 plotBetween = True
 x1 = data[torch.randint(data.size(0), (test_size,))]
 
@@ -245,8 +246,13 @@ for i, t in enumerate(torch.linspace(0, 1, steps), start=1):
         plt.scatter(xt[:, 0].detach().numpy(), xt[:, 1].detach().numpy(), color="green", marker="o")
         plt.show(block = True)
 
-# pred = model(xt)
-# xt = xt +  pred
+
+
+# t = 1
+# xt = torch.randn(test_size, 2)
+# pred = model(torch.cat([xt, torch.unsqueeze(torch.ones(xt.size(0)) * t, 1)], dim=1))
+# xt = xt + pred
+
 
 # Plot the checkerboard pattern
 plt.figure(figsize=(6, 6))

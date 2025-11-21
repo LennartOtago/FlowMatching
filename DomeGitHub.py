@@ -101,7 +101,7 @@ optim = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
 
 data = torch.Tensor(sampled_points)
-training_steps = 100_000
+training_steps = 100_00
 batch_size = 64
 pbar = tqdm.tqdm(range(training_steps))
 losses = []
@@ -111,6 +111,8 @@ for i in pbar:
 
     target = x1 - x0
     t = torch.rand(x1.size(0))
+    # t = torch.ones(x1.size(0))
+
     xt = (1 - t[:, None]) * x0 + t[:, None] * x1
     pred = model(xt, t)  # also add t here
     loss = ((target - pred)**2).mean()
@@ -120,6 +122,20 @@ for i in pbar:
     pbar.set_postfix(loss=loss.item())
     losses.append(loss.item())
 
+
+
+
+##
+torch.manual_seed(42)
+model.eval().requires_grad_(False)
+xt = torch.randn(1000, 2)
+pred = model(xt,torch.ones(xt.size(0)))
+xt =  xt + pred
+#pred = xt + pred
+plt.figure(figsize=(6, 6))
+plt.scatter(sampled_points[:, 0], sampled_points[:, 1], color="red", marker="o")
+plt.scatter(xt[:, 0], xt[:, 1], color="green", marker="o")
+plt.show(block = True)
 
 ##
 torch.manual_seed(42)
@@ -134,16 +150,8 @@ for t in torch.linspace(0, 1, steps):
 plt.figure(figsize=(6, 6))
 plt.scatter(sampled_points[:, 0], sampled_points[:, 1], color="red", marker="o")
 plt.scatter(xt[:, 0], xt[:, 1], color="green", marker="o")
-#plt.show(block = True)
-##
-xt = torch.randn(1000, 2)
-pred = model(xt,torch.ones(xt.size(0)))
-xt =  xt + pred
-#pred = xt + pred
-plt.figure(figsize=(6, 6))
-plt.scatter(sampled_points[:, 0], sampled_points[:, 1], color="red", marker="o")
-plt.scatter(xt[:, 0], xt[:, 1], color="green", marker="o")
 plt.show(block = True)
+
 ##
 
 # steps = 1000
