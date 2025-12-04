@@ -227,7 +227,7 @@ else:
 
 ##
 test_size = 500
-plot_every = 250
+plot_every = 50
 plotBetween = True
 x1 = data[torch.randint(data.size(0), (test_size,))]
 
@@ -244,7 +244,7 @@ for i, t in enumerate(torch.linspace(0, 1, steps), start=1):
         plt.figure(figsize=(6, 6))
         plt.scatter(x1[:, 0].detach().numpy(), x1[:, 1].detach().numpy(), color="red", marker="o")
         plt.scatter(xt[:, 0].detach().numpy(), xt[:, 1].detach().numpy(), color="green", marker="o")
-        plt.show(block = True)
+        #plt.show(block = True)
 
 
 
